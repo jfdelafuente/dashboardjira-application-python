@@ -1,0 +1,109 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+.tox/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+dashboard.db
+
+# Environment Variables (use docker-compose env vars instead)
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Specs and Planning (not needed in container)
+specs/
+.specify/
+.claude/
+
+# CI/CD
+.github/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+nginx/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Development tools config
+.flake8
+.editorconfig
+.pre-commit-config.yaml
+mypy.ini
+pytest.ini
+
+# Instance folder (created at runtime)
+instance/
+
+# Migration versions (will be generated)
+migrations/versions/*.py
+
+# Static compiled assets (if any)
+*.min.js
+*.min.css
+
+# Coverage reports
+coverage.xml
+.coverage.*
+
+# Backup files
+*.backup
+*.old

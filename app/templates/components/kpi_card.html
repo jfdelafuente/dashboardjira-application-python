@@ -1,0 +1,21 @@
+{#
+KPI Card Component
+
+Reusable macro for displaying key performance indicator cards.
+
+Parameters:
+    title (str): Card title/label (e.g., "Total Open Issues")
+    value (int|float): Metric value to display
+    icon (str): Icon character or emoji (e.g., "📊", "🔥", "⏱️", "⚠️")
+    css_class (str, optional): Additional CSS class for styling
+#}
+
+{% macro kpi_card(title, value, icon, css_class='') %}
+<div class="kpi-card {{ css_class }}" role="region" aria-label="{{ title }}">
+    <div class="kpi-icon">{{ icon }}</div>
+    <div class="kpi-content">
+        <h3 class="kpi-title">{{ title }}</h3>
+        <p class="kpi-value">{{ value }}</p>
+    </div>
+</div>
+{% endmacro %}

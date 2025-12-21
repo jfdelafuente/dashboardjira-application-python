@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "components/kpi_card.html" import kpi_card %}
+{% from "components/issue_table.html" import issue_table %}
+
+{% block title %}Dashboard - Support Team{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <h2 class="dashboard-title">Support Team Overview</h2>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="flash-messages">
+                {% for category, message in messages %}
+                    <div class="flash-message flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- KPI Cards Section -->
+    <section class="kpi-section" aria-label="Key Performance Indicators">
+        <div class="kpi-grid">
+            {{ kpi_card("Total Open Issues", kpis.total_open, "📊", "kpi-total-open") }}
+            {{ kpi_card("Critical Issues", kpis.critical_issues, "🔥", "kpi-critical") }}
+            {{ kpi_card("Avg Resolution Time", (kpis.avg_resolution_time_hours | round(1)) ~ " hours", "⏱️", "kpi-avg-time") }}
+            {{ kpi_card("Overdue Tickets", kpis.overdue_tickets, "⚠️", "kpi-overdue") }}
+        </div>
+    </section>
+
+    <!-- Charts Section -->
+    <section class="charts-section" aria-label="Issue Distribution Charts">
+        <h3 class="section-title">Issue Distribution</h3>
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h4 class="chart-title">Status Distribution</h4>
+                <canvas id="status-chart" aria-label="Bar chart showing issue status distribution"></canvas>
+            </div>
+            <div class="chart-container">
+                <h4 class="chart-title">Priority Distribution</h4>
+                <canvas id="priority-chart" aria-label="Pie chart showing issue priority distribution"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Issue Table Section -->
+    <section class="table-section" aria-label="Issue List">
+        <h3 class="section-title">All Issues</h3>
+
+        <!-- Search and Filter Controls -->
+        <div class="table-controls">
+            <input
+                type="search"
+                id="search-input"
+                class="search-input"
+                placeholder="Search by key or summary..."
+                aria-label="Search issues"
+            />
+
+            <select
+                id="priority-filter"
+                class="priority-filter"
+                aria-label="Filter by priority"
+            >
+                <option value="">All Priorities</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+        </div>
+
+        <!-- Issue Table (populated dynamically via JavaScript) -->
+        {{ issue_table([]) }}
+
+        <!-- Pagination Controls -->
+        <div class="pagination-controls" id="pagination-controls">
+            <button id="prev-page" class="pagination-btn" disabled>Previous</button>
+            <span class="page-info" id="page-info">Page 1 of 1</span>
+            <button id="next-page" class="pagination-btn" disabled>Next</button>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/filters.js') }}"></script>
+{% endblock %}

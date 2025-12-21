@@ -1,0 +1,351 @@
+openapi: 3.0.3
+info:
+  title: Support Team Dashboard API
+  description: REST API for support team dashboard - provides KPIs, issue data, and filtering
+  version: 1.0.0
+  contact:
+    name: Support Team Dashboard
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://dashboard.example.com
+    description: Production server
+
+paths:
+  /:
+    get:
+      summary: Dashboard home page
+      description: Renders the main dashboard HTML page with KPIs, charts, and issue table
+      operationId: getDashboard
+      tags:
+        - Pages
+      responses:
+        '200':
+          description: Dashboard HTML page
+          content:
+            text/html:
+              schema:
+                type: string
+        '500':
+          description: Server error (unable to load issue data)
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /api/kpis:
+    get:
+      summary: Get KPI metrics
+      description: Returns calculated KPI metrics (total open issues, critical issues, avg resolution time, overdue count)
+      operationId: getKPIs
+      tags:
+        - API
+      responses:
+        '200':
+          description: KPI metrics successfully calculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KPIResponse'
+              example:
+                total_open: 47
+                critical_issues: 5
+                avg_resolution_time_hours: 18.5
+                overdue_tickets: 3
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/issues:
+    get:
+      summary: Get issues with optional filtering
+      description: Returns paginated list of issues with optional text search and priority filter
+      operationId: getIssues
+      tags:
+        - API
+      parameters:
+        - name: search
+          in: query
+          description: Text search query (searches jira_key and summary fields)
+          required: false
+          schema:
+            type: string
+            example: "authentication bug"
+        - name: priority
+          in: query
+          description: Filter by priority level
+          required: false
+          schema:
+            type: string
+            enum: [Critical, High, Medium, Low]
+            example: "Critical"
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          description: Items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Issues successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuesResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/charts/status:
+    get:
+      summary: Get status distribution data
+      description: Returns issue counts grouped by status (for bar chart)
+      operationId: getStatusDistribution
+      tags:
+        - API
+      responses:
+        '200':
+          description: Status distribution data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusDistributionResponse'
+              example:
+                labels: ["To Do", "In Progress", "Done"]
+                data: [15, 20, 12]
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/charts/priority:
+    get:
+      summary: Get priority distribution data
+      description: Returns issue counts grouped by priority (for pie chart)
+      operationId: getPriorityDistribution
+      tags:
+        - API
+      responses:
+        '200':
+          description: Priority distribution data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriorityDistributionResponse'
+              example:
+                labels: ["Critical", "High", "Medium", "Low"]
+                data: [5, 12, 20, 10]
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Issue:
+      type: object
+      required:
+        - id
+        - jira_key
+        - summary
+        - status
+        - priority
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Internal database ID
+          example: 1
+        jira_key:
+          type: string
+          description: Jira issue key (e.g., "SUP-1234")
+          example: "SUP-1234"
+        summary:
+          type: string
+          description: Brief description of the issue
+          example: "User unable to login after password reset"
+        status:
+          type: string
+          enum: [To Do, In Progress, Done]
+          description: Current workflow status
+          example: "In Progress"
+        priority:
+          type: string
+          enum: [Critical, High, Medium, Low]
+          description: Issue priority level
+          example: "High"
+        assignee_name:
+          type: string
+          nullable: true
+          description: Name of assigned team member (null if unassigned)
+          example: "Jane Doe"
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when issue was created
+          example: "2025-12-20T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of last update
+          example: "2025-12-21T14:15:00Z"
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: ISO 8601 timestamp when issue was resolved (null if not resolved)
+          example: "2025-12-21T16:45:00Z"
+        is_overdue:
+          type: boolean
+          description: True if issue is past SLA deadline and not resolved
+          example: false
+
+    KPIResponse:
+      type: object
+      required:
+        - total_open
+        - critical_issues
+        - avg_resolution_time_hours
+        - overdue_tickets
+      properties:
+        total_open:
+          type: integer
+          description: Count of issues with status != Done
+          example: 47
+        critical_issues:
+          type: integer
+          description: Count of issues with priority = Critical
+          example: 5
+        avg_resolution_time_hours:
+          type: number
+          format: float
+          nullable: true
+          description: Average hours from creation to resolution (null if no resolved issues)
+          example: 18.5
+        overdue_tickets:
+          type: integer
+          description: Count of issues past SLA deadline and not resolved
+          example: 3
+
+    IssuesResponse:
+      type: object
+      required:
+        - issues
+        - pagination
+      properties:
+        issues:
+          type: array
+          description: Array of Issue objects
+          items:
+            $ref: '#/components/schemas/Issue'
+        pagination:
+          type: object
+          required:
+            - page
+            - per_page
+            - total_items
+            - total_pages
+          properties:
+            page:
+              type: integer
+              description: Current page number (1-indexed)
+              example: 1
+            per_page:
+              type: integer
+              description: Items per page
+              example: 50
+            total_items:
+              type: integer
+              description: Total count of issues matching filters
+              example: 47
+            total_pages:
+              type: integer
+              description: Total number of pages
+              example: 1
+
+    StatusDistributionResponse:
+      type: object
+      required:
+        - labels
+        - data
+      properties:
+        labels:
+          type: array
+          description: Status category names (x-axis labels for bar chart)
+          items:
+            type: string
+          example: ["To Do", "In Progress", "Done"]
+        data:
+          type: array
+          description: Issue counts for each status (y-axis values)
+          items:
+            type: integer
+          example: [15, 20, 12]
+
+    PriorityDistributionResponse:
+      type: object
+      required:
+        - labels
+        - data
+      properties:
+        labels:
+          type: array
+          description: Priority level names (pie chart slices)
+          items:
+            type: string
+          example: ["Critical", "High", "Medium", "Low"]
+        data:
+          type: array
+          description: Issue counts for each priority (slice sizes)
+          items:
+            type: integer
+          example: [5, 12, 20, 10]
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type/code
+          example: "internal_server_error"
+        message:
+          type: string
+          description: Human-readable error message
+          example: "Unable to load issue data. Please check your connection and try again."
+
+tags:
+  - name: Pages
+    description: HTML page endpoints (server-side rendered)
+  - name: API
+    description: JSON API endpoints (for AJAX updates)
