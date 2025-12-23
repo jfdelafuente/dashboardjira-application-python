@@ -45,15 +45,24 @@ def check_environment_variables():
     """Check if required environment variables are set."""
     print_header("Step 1: Checking Environment Variables")
 
-    required_vars = [
+    # Check for server and project (always required)
+    required_vars = ["JIRA_SERVER", "JIRA_PROJECT_KEY"]
+
+    # Check authentication: either username/password OR email/token
+    has_user_pass = bool(os.getenv("JIRA_USERNAME") and os.getenv("JIRA_PASSWORD"))
+    has_email_token = bool(os.getenv("JIRA_EMAIL") and os.getenv("JIRA_API_TOKEN"))
+
+    all_vars = [
         "JIRA_SERVER",
+        "JIRA_USERNAME",
+        "JIRA_PASSWORD",
         "JIRA_EMAIL",
         "JIRA_API_TOKEN",
         "JIRA_PROJECT_KEY",
     ]
 
     missing_vars = []
-    for var in required_vars:
+    for var in all_vars:
         value = os.getenv(var)
         if value:
             # Mask sensitive values
@@ -65,18 +74,33 @@ def check_environment_variables():
                 display_value = value
             print_success(f"{var}={display_value}")
         else:
-            print_error(f"{var} is not set")
-            missing_vars.append(var)
+            if var in required_vars:
+                print_error(f"{var} is not set")
+                missing_vars.append(var)
+            else:
+                print_warning(f"{var} is not set (optional)")
+
+    # Check authentication methods
+    if not has_user_pass and not has_email_token:
+        print_error("No valid authentication credentials found")
+        print("\nPlease set authentication variables in your .env file:")
+        print("\nOption 1 - For Jira Server/Data Center (username/password):")
+        print("  JIRA_USERNAME=your-username")
+        print("  JIRA_PASSWORD=your-password")
+        print("\nOption 2 - For Jira Cloud or Server with API token:")
+        print("  JIRA_EMAIL=your-email@example.com")
+        print("  JIRA_API_TOKEN=your-api-token")
+        return False
+
+    if has_user_pass:
+        print_success("Using username/password authentication")
+    if has_email_token:
+        print_success("Using email/token authentication")
 
     if missing_vars:
         print_error(
             f"Missing required environment variables: {', '.join(missing_vars)}"
         )
-        print("\nPlease set these variables in your .env file:")
-        print("  JIRA_SERVER=https://your-domain.atlassian.net")
-        print("  JIRA_EMAIL=your-email@example.com")
-        print("  JIRA_API_TOKEN=your-api-token")
-        print("  JIRA_PROJECT_KEY=SUP")
         return False
 
     return True
@@ -96,15 +120,51 @@ def test_jira_connection(verbose=False):
     jira_server = os.getenv("JIRA_SERVER")
     jira_email = os.getenv("JIRA_EMAIL")
     jira_token = os.getenv("JIRA_API_TOKEN")
+    jira_username = os.getenv("JIRA_USERNAME")
+    jira_password = os.getenv("JIRA_PASSWORD")
 
     try:
         print(f"Connecting to {jira_server}...")
+
+        # Configure SSL verification
+        verify_ssl = os.getenv("JIRA_VERIFY_SSL", "true").lower() in ("true", "1", "yes")
+
+        jira_options = {
+            "server": jira_server,
+            "verify": verify_ssl,
+        }
+
+        if not verify_ssl:
+            print_warning("SSL certificate verification is DISABLED")
+            print_warning("This should only be used in development environments")
+            # Suppress SSL warnings
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+        # Try different authentication methods
+        # For Jira Server/Data Center: username/password or API token
+        # For Jira Cloud: email/API token
+
+        auth_method = None
+        if jira_username and jira_password:
+            print(f"Using username/password authentication for user: {jira_username}")
+            auth = (jira_username, jira_password)
+            auth_method = "username/password"
+        elif jira_email and jira_token:
+            print(f"Using email/token authentication for user: {jira_email}")
+            auth = (jira_email, jira_token)
+            auth_method = "email/token"
+        else:
+            print_error("No valid authentication credentials found")
+            print("Set either JIRA_USERNAME + JIRA_PASSWORD or JIRA_EMAIL + JIRA_API_TOKEN")
+            return False
+
         jira = JIRA(
-            server=jira_server,
-            basic_auth=(jira_email, jira_token),
-            timeout=10,
+            options=jira_options,
+            basic_auth=auth,
+            timeout=60,
         )
-        print_success(f"Connected to Jira server: {jira_server}")
+        print_success(f"Connected to Jira server using {auth_method}: {jira_server}")
 
         # Test authentication
         current_user = jira.myself()

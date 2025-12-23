@@ -164,11 +164,98 @@ class JiraService:
 
         Returns:
             List of issue dictionaries from Jira
-
-        Note:
-            Full implementation deferred to future iteration.
-            For now, raises NotImplementedError.
         """
-        raise NotImplementedError(
-            "Jira API integration not yet implemented. Set USE_MOCK_DATA=true in .env"
+        from jira import JIRA
+        import urllib3
+
+        jira_server = os.getenv("JIRA_SERVER")
+        jira_email = os.getenv("JIRA_EMAIL")
+        jira_token = os.getenv("JIRA_API_TOKEN")
+        jira_username = os.getenv("JIRA_USERNAME")
+        jira_password = os.getenv("JIRA_PASSWORD")
+        project_key = os.getenv("JIRA_PROJECT_KEY")
+
+        if not jira_server or not project_key:
+            raise ValueError(
+                "Missing required Jira configuration. "
+                "Set JIRA_SERVER and JIRA_PROJECT_KEY in .env"
+            )
+
+        # Determine authentication method
+        has_user_pass = bool(jira_username and jira_password)
+        has_email_token = bool(jira_email and jira_token)
+
+        if not has_user_pass and not has_email_token:
+            raise ValueError(
+                "Missing Jira authentication credentials. "
+                "Set either JIRA_USERNAME + JIRA_PASSWORD or JIRA_EMAIL + JIRA_API_TOKEN in .env"
+            )
+
+        # Configure SSL verification
+        verify_ssl = os.getenv("JIRA_VERIFY_SSL", "true").lower() in (
+            "true",
+            "1",
+            "yes",
         )
+
+        if not verify_ssl:
+            # Suppress SSL warnings when verification is disabled
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+        # Connect to Jira
+        jira_options = {
+            "server": jira_server,
+            "verify": verify_ssl,
+        }
+
+        # Choose authentication method (prefer username/password for Jira Server)
+        if has_user_pass:
+            auth = (jira_username, jira_password)
+        else:
+            auth = (jira_email, jira_token)
+
+        jira = JIRA(
+            options=jira_options,
+            basic_auth=auth,
+            timeout=30,
+        )
+
+        # Fetch issues from project
+        jql = f'project = "{project_key}" ORDER BY created DESC'
+        issues = jira.search_issues(jql, maxResults=100)
+
+        # Transform to expected format
+        result = []
+        for issue in issues:
+            result.append(
+                {
+                    "jira_key": issue.key,
+                    "summary": issue.fields.summary,
+                    "description": getattr(issue.fields, "description", ""),
+                    "status": issue.fields.status.name,
+                    "priority": issue.fields.priority.name
+                    if hasattr(issue.fields, "priority") and issue.fields.priority
+                    else "Medium",
+                    "assignee_jira_id": issue.fields.assignee.accountId
+                    if hasattr(issue.fields, "assignee") and issue.fields.assignee
+                    else None,
+                    "assignee_name": issue.fields.assignee.displayName
+                    if hasattr(issue.fields, "assignee") and issue.fields.assignee
+                    else None,
+                    "assignee_email": issue.fields.assignee.emailAddress
+                    if hasattr(issue.fields, "assignee") and issue.fields.assignee
+                    else None,
+                    "created_at": datetime.fromisoformat(
+                        issue.fields.created.replace("Z", "+00:00")
+                    ),
+                    "resolved_at": datetime.fromisoformat(
+                        issue.fields.resolutiondate.replace("Z", "+00:00")
+                    )
+                    if hasattr(issue.fields, "resolutiondate")
+                    and issue.fields.resolutiondate
+                    else None,
+                    "sla_deadline": None,  # SLA calculation to be implemented
+                }
+            )
+
+        return result
