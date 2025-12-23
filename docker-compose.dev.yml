@@ -1,0 +1,44 @@
+version: '3.8'
+
+# Development-specific Docker Compose configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  db:
+    ports:
+      - "5432:5432"  # Expose PostgreSQL for local access
+
+  redis:
+    ports:
+      - "6379:6379"  # Expose Redis for local access
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: 1
+    volumes:
+      # Mount source code for live reload
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - ./scripts:/app/scripts
+      - ./migrations:/app/migrations
+      - ./run.py:/app/run.py
+    command: flask run --host=0.0.0.0 --port=8000 --debug
+    stdin_open: true
+    tty: true
+
+  # Development Tools Container
+  dev-tools:
+    image: python:3.12-slim
+    container_name: dashboard-dev-tools
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: tail -f /dev/null
+    networks:
+      - dashboard-network
+    profiles:
+      - tools

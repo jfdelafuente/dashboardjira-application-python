@@ -1,0 +1,6 @@
+# Test dependencies extending dev.txt
+-r dev.txt
+
+# Additional pytest plugins
+pytest-mock==3.12.0
+pytest-xdist==3.5.0

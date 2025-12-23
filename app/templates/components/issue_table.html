@@ -1,0 +1,56 @@
+{#
+Issue Table Component
+
+Displays a table of issues with columns:
+- Jira Key
+- Summary
+- Assigned To
+- Priority
+- Status
+
+Parameters:
+    issues (list): List of issue dictionaries with keys: jira_key, summary, assignee_name, priority, status
+#}
+
+{% macro issue_table(issues) %}
+<div class="table-container">
+    <table class="issue-table">
+        <thead>
+            <tr>
+                <th>Key</th>
+                <th>Summary</th>
+                <th>Assigned To</th>
+                <th>Priority</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="issue-table-body">
+            {% if issues and issues|length > 0 %}
+                {% for issue in issues %}
+                <tr>
+                    <td class="issue-key">{{ issue.jira_key }}</td>
+                    <td class="issue-summary">{{ issue.summary }}</td>
+                    <td class="issue-assignee">
+                        {% if issue.assignee_name %}
+                            {{ issue.assignee_name }}
+                        {% else %}
+                            <span class="unassigned">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td class="issue-priority priority-{{ issue.priority|lower|replace(' ', '-') }}">
+                        {{ issue.priority }}
+                    </td>
+                    <td class="issue-status status-{{ issue.status|lower|replace(' ', '-') }}">
+                        {{ issue.status }}
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="5" class="no-results">No issues found</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}

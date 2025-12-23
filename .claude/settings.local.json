@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m flask db migrate:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(python -m flake8:*)",
+      "Bash(python -m black:*)",
+      "Bash(timeout 5 python:*)",
+      "Bash(echo:*)",
+      "Bash(python scripts/seed_data.py:*)",
+      "Bash(set PYTHONPATH=.)",
+      "Bash(python -m scripts.seed_data:*)"
+    ]
+  }
+}
